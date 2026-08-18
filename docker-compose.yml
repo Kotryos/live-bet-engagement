@@ -162,7 +162,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      STATE_DIR: /tmp/kafka-streams
+      STATE_DIR: /var/lib/kafka-streams
 
     # No ports and no volumes, both of which would break scaling: replicas
     # cannot bind the same host port, and each needs its own state directory.

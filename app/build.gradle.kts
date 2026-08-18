@@ -64,8 +64,8 @@ tasks.test {
 
 tasks.shadowJar {
     archiveFileName.set("app-all.jar")
-    // Deliberately no Main-Class in the manifest: BetFeeder, MatchEventFeeder and
-    // StreamsApp are all entry points, each invoked with `java -cp app-all.jar <class>`.
+    // Deliberately no Main-Class: Feeder and StreamsApp are both entry points, each
+    // invoked with `java -cp app-all.jar <class>`.
     mergeServiceFiles()
 }
 
