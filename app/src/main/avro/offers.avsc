@@ -1,0 +1,38 @@
+{
+  "type": "record",
+  "name": "Offer",
+  "namespace": "dev.kotryos.betengagement.avro",
+  "doc": "The pipeline's output: a reward a player has qualified for, plus the event and bet that earned it. Produced to the offers topic keyed by player_id, then upserted into the offers table by the JDBC sink. Every field name here must match a column of that table.",
+  "fields": [
+    {
+      "name": "player_id",
+      "type": "string",
+      "doc": "Who to reward. The message key on the offers topic and the primary key of the offers table."
+    },
+    {
+      "name": "bet_id",
+      "type": "string",
+      "doc": "The open bet that qualified."
+    },
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "The match it was placed on."
+    },
+    {
+      "name": "event_type",
+      "type": "string",
+      "doc": "The match event that triggered this, for example GOAL."
+    },
+    {
+      "name": "stake",
+      "type": "double",
+      "doc": "Copied from the bet, already checked against the rule's min_stake."
+    },
+    {
+      "name": "reward",
+      "type": "string",
+      "doc": "Taken from the matching rule, for example free_bet_5."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "type": "record",
+  "name": "Bet",
+  "namespace": "dev.kotryos.betengagement.avro",
+  "doc": "A bet a player placed on a match. Published by an upstream system; this pipeline only consumes it.",
+  "fields": [
+    {
+      "name": "bet_id",
+      "type": "string",
+      "doc": "Unique per bet, and the message key on the bets topic."
+    },
+    {
+      "name": "player_id",
+      "type": "string",
+      "doc": "Who placed the bet. Becomes the message key of the offers topic at the end of the pipeline."
+    },
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "The match this bet is on. The pipeline regroups bets by this field so it can find everyone affected by a goal."
+    },
+    {
+      "name": "market",
+      "type": "string",
+      "doc": "What was bet on, for example match_winner. Carried along but not used in any decision."
+    },
+    {
+      "name": "stake",
+      "type": "double",
+      "doc": "Amount staked, compared against the rule's min_stake."
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "doc": "OPEN or SETTLED. A SETTLED bet is removed from the open-bets aggregate, which is what stops that state growing forever."
+    }
+  ]
+}

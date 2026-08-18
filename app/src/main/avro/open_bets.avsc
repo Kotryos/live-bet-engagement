@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "OpenBets",
+  "namespace": "dev.kotryos.betengagement.avro",
+  "doc": "Every currently open bet on one match. This is the aggregate the Streams app keeps in a state store, keyed by event_id, so a goal can be fanned out to everyone holding a bet on that match. It replaces the windowed stream-stream join that cannot work here, because bets are placed hours or days before kickoff.",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "The match these bets are on."
+    },
+    {
+      "name": "bets",
+      "type": {
+        "type": "array",
+        "items": "dev.kotryos.betengagement.avro.Bet"
+      },
+      "default": [],
+      "doc": "Open bets only. An entry is added when a bet arrives OPEN and removed when the same bet_id arrives SETTLED, which is what keeps this bounded."
+    }
+  ]
+}

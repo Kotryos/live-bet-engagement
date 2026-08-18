@@ -1,0 +1,36 @@
+{
+  "type": "record",
+  "name": "MatchEvent",
+  "namespace": "dev.kotryos.betengagement.avro",
+  "doc": "Something that happened during a live match. High-volume telemetry from an upstream feed.",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string",
+      "doc": "Which match. The message key on match_events, and the key this stream joins to the open-bets table on."
+    },
+    {
+      "name": "minute",
+      "type": "int",
+      "doc": "Minute of play when it happened."
+    },
+    {
+      "name": "event_type",
+      "type": "string",
+      "doc": "GOAL, RED_CARD or HALF_TIME. Looked up in the rules table to decide which reward applies."
+    },
+    {
+      "name": "home_score",
+      "type": "int"
+    },
+    {
+      "name": "away_score",
+      "type": "int"
+    },
+    {
+      "name": "ts",
+      "type": "long",
+      "doc": "Epoch milliseconds."
+    }
+  ]
+}
