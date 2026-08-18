@@ -1,0 +1,7 @@
+bet_id,player_id,event_id,market,stake,status
+bet-03,player-03,match-1,match_winner,12.00,SETTLED
+bet-04,player-04,match-1,both_teams_score,20.00,SETTLED
+bet-06,player-06,match-1,match_winner,45.00,SETTLED
+bet-08,player-08,match-1,match_winner,60.00,SETTLED
+bet-11,player-11,match-2,both_teams_score,26.00,SETTLED
+bet-14,player-01,match-2,match_winner,70.00,SETTLED
