@@ -1,0 +1,7 @@
+# Everything here is consumed by Linux containers or by tools that accept LF, so
+# keep LF everywhere rather than letting Windows clones check out CRLF. Shell
+# scripts in particular fail on Linux with a confusing "bad interpreter" error.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.jar binary
