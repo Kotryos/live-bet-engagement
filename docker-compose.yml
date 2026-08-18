@@ -1,0 +1,168 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: engagement
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    # Debezium works by reading the write-ahead log, and Postgres only writes
+    # enough detail into that log when wal_level is logical.
+    command: postgres -c wal_level=logical -c max_replication_slots=4 -c max_wal_senders=4
+
+    volumes:
+      # Scripts here run only when the data volume is created fresh. Changing
+      # the schema later needs `docker compose down -v` first.
+      - ./postgres/init:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d engagement"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # One node acting as both broker and controller. This is KRaft mode, so
+      # there is no ZooKeeper.
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # A broker answers every client with an address to reconnect on, and
+      # clients here live in two places. Other containers must be told
+      # `kafka:29092`; the feeders and the IDE, running on the host machine,
+      # must be told `localhost:9092`. Hence two listeners.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      # Kafka Streams can only join topics that share a partition count, and
+      # most topics here are created automatically. Making three the default
+      # means they all agree without anyone having to remember.
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      # A single broker cannot hold two copies of anything, so every
+      # replication factor has to be 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Rebalance immediately instead of waiting for stragglers to join.
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    container_name: schema-registry
+    ports:
+      - "8081:8081"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/subjects >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  connect:
+    build: ./connect
+    container_name: connect
+    ports:
+      - "8083:8083"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:29092
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+
+      # Connect keeps its own state in Kafka rather than on disk, which is how
+      # a restarted worker resumes where it left off.
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      # Every topic here is keyed by a plain string. An Avro key converter would
+      # prefix each key with a schema id, which the Streams app cannot read and
+      # the JDBC sink cannot match against pk.fields. Values stay Avro.
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+      # Where Connect looks for the connectors installed by connect/Dockerfile.
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+
+      KAFKA_HEAP_OPTS: -Xmx1G -Xms1G
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/connectors >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  # A browser view over topics, schemas and connectors, so the internal topics
+  # Kafka Streams creates can be inspected without a shell.
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+
+  # Kept behind a profile so `docker compose up -d` starts infrastructure only,
+  # leaving the app to be started and scaled deliberately:
+  #   docker compose --profile full up -d --scale app=3
+  app:
+    profiles: ["full"]
+    build: ./app
+    depends_on:
+      connect:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      STATE_DIR: /tmp/kafka-streams
+
+    # No ports and no volumes, both of which would break scaling: replicas
+    # cannot bind the same host port, and each needs its own state directory.
