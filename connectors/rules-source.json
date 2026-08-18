@@ -1,0 +1,27 @@
+{
+  "name": "rules-source",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "engagement",
+
+    "plugin.name": "pgoutput",
+    "slot.name": "engagement_slot",
+    "publication.name": "engagement_pub",
+    "topic.prefix": "db",
+    "table.include.list": "public.engagement_rules",
+
+    "decimal.handling.mode": "double",
+
+    "transforms": "unwrap,extractKey",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.extractKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.extractKey.field": "event_type"
+  }
+}
