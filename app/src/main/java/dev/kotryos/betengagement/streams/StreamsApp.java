@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
-/**
- * Owns the lifecycle: builds the topology, starts it, and shuts it down cleanly.
- * All of this is what Spring Boot would do for you in phase two.
- */
+/** Owns the lifecycle: builds the topology, starts it, and shuts it down cleanly. */
 public final class StreamsApp {
 
     /** Names the consumer group and prefixes every internal topic, so changing it starts afresh. */
