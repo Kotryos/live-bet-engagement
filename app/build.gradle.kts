@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.kotryos"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 
 // Kafka 3.6.x / Confluent 7.6.x are a matched pair. The Confluent serializer
 // version must equal the cp-schema-registry image tag in docker-compose.yml.
